@@ -16,6 +16,6 @@ cd build
 cmake .. -DCMAKE_C_COMPILER=emcc -DCMAKE_CXX_COMPILER=em++ -DCMAKE_AR=$EMSDK/upstream/emscripten/emar --no-warn-unused-cli
 make -j`grep -c processor /proc/cpuinfo`
 
-emcc -I$PHYSX_ROOT_DIR/include -I$PM_PxShared_PATH/include -DNDEBUG \
+emcc -I$PHYSX_ROOT_DIR/include -I$PM_PxShared_PATH/include -DNDEBUG -O3 \
 -s NO_EXIT_RUNTIME=1 -s NO_FILESYSTEM=1 -s MODULARIZE=1 -s ALLOW_MEMORY_GROWTH=1 \
 -s EXPORT_NAME=initPhysX --bind -o physx.js libPhysX.a ../embind.cpp
