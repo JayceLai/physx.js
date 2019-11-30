@@ -1,0 +1,6 @@
+PhysX
+build/CMakeFiles
+build/libPhysX.a
+build/Makefile
+build/CMakeCache.txt
+build/cmake_install.cmake
