@@ -79,7 +79,7 @@ function main(Px)
 	var tolerances = new Px.TolerancesScale();
 	physics = Px.CreatePhysics(Px.PHYSICS_VERSION, foundation, tolerances, true, null);
 	
-	desc = new Px.SceneDesc(tolerances);
+	var desc = new Px.SceneDesc(tolerances);
 	tolerances.delete();
 	var gravity = new Px.Vec3(0, -9.81, 0);
 	desc.gravity = gravity;
@@ -88,7 +88,7 @@ function main(Px)
 	desc.cpuDispatcher = dispatcher;
 	Px.js_SceneDesc_filterShader_setDefault(desc); //equivalent of "desc.filterShader = PxDefaultSimulationFilterShader;"
 	scene = physics.createScene(desc);
-	//desc.delete();
+	desc.delete();
 	
 	//---demo init---//
 	canvas.addEventListener("pointerdown", () => startDemo = true);
