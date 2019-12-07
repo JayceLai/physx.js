@@ -74,7 +74,8 @@ EMSCRIPTEN_BINDINGS(physxjs)
 	class_<PxActor>("Actor");
 	class_<PxRigidActor, base<PxActor>>("PxRigidActor")
 			.function("attachShape", &PxRigidActor::attachShape)
-			.function("getGlobalPose", &PxRigidActor::getGlobalPose);
+			.function("getGlobalPose", &PxRigidActor::getGlobalPose)
+			.function("setGlobalPose", &PxRigidActor::setGlobalPose);
 	class_<PxRigidStatic, base<PxRigidActor>>("RigidStatic");
 	class_<PxBVHStructure>("BVHStructure");
 	class_<PxTransform>("Transform")
@@ -93,6 +94,7 @@ EMSCRIPTEN_BINDINGS(physxjs)
 			.value("eTRIGGER_SHAPE", PxShapeFlag::eTRIGGER_SHAPE)
 			.value("eVISUALIZATION", PxShapeFlag::eVISUALIZATION);
 	class_<PxRigidBody, base<PxRigidActor>>("RigidBody")
+			.function("getLinearVelocity", &PxRigidBody::getLinearVelocity)
 			.function("setLinearVelocity", &PxRigidBody::setLinearVelocity);
 	class_<PxRigidDynamic, base<PxRigidBody>>("PxRigidDynamic");
 	class_<PxRigidBodyExt>("RigidBodyExt")
@@ -120,6 +122,8 @@ EMSCRIPTEN_BINDINGS(physxjs)
 			.element(MOM_POINTER(PxMat44, column3.y))
 			.element(MOM_POINTER(PxMat44, column3.z))
 			.element(MOM_POINTER(PxMat44, column3.w));
+	class_<PxCapsuleGeometry, base<PxGeometry>>("CapsuleGeometry")
+			.constructor<PxReal, PxReal>();
 }
 
 namespace emscripten
