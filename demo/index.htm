@@ -86,7 +86,7 @@ function main(Px)
 	gravity.delete();
 	dispatcher = Px.DefaultCpuDispatcherCreate(); //numThreads arg is disabled so physx always runs in the main thread
 	desc.cpuDispatcher = dispatcher;
-	Px.js_SceneDesc_filterShader_setDefault(desc); //equivalent of "desc.filterShader = PxDefaultSimulationFilterShader;"
+	desc.filterShader_setDefault(); //equivalent of "desc.filterShader = PxDefaultSimulationFilterShader;"
 	scene = physics.createScene(desc);
 	desc.delete();
 	
@@ -200,8 +200,8 @@ function draw()
 		//normally you would pass in deltaTime instead of 1 / 60 but the overly delicate cube stacks explode because of the initial loading lag spike
 		//deltaTime is defined in gl.js
 		//physx's actual hello world snippet uses a fixed timestep so no hate
-		Px.js_Scene_simulate(scene, 1 / 60);
-		Px.js_Scene_fetchResults(scene, true);
+		scene.simulate(1 / 60);
+		scene.fetchResults(true);
 	}
 	
 	for(var i in stackGL)

@@ -353,7 +353,7 @@ namespace emscripten {
                 return &v;
             }
 
-            //function returning an object (use the value immediately and drop all references to it)
+            //function returning a stack-allocated object (use the value immediately and drop all references to it)
             static WireType toWireType(T&& v) {
                 return &v;
             }
