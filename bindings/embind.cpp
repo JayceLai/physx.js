@@ -1,5 +1,6 @@
 #include <emscripten/bind.h>
 #include "PxPhysicsAPI.h"
+
 #include "mom.hpp"
 #include "JSTriangleMeshDesc.hpp"
 
@@ -68,7 +69,8 @@ EMSCRIPTEN_BINDINGS(physxjs)
 			.function("fetchResults", select_overload<bool(PxScene&, bool)>([](PxScene& self, bool block)
 			{
 				return self.fetchResults(block);
-			}));
+			}))
+			.function("raycast", &PxScene::raycast);
 	class_<PxMaterial>("Material")
 			.function("getDynamicFriction", &PxMaterial::getDynamicFriction)
 			.function("setDynamicFriction", &PxMaterial::setDynamicFriction)
@@ -93,7 +95,9 @@ EMSCRIPTEN_BINDINGS(physxjs)
 	class_<PxGeometry>("Geometry");
 	class_<PxBoxGeometry, base<PxGeometry>>("BoxGeometry")
 			.constructor<PxReal, PxReal, PxReal>();
-	class_<PxShape>("Shape");
+	class_<PxShape>("Shape")
+			.function("setSimulationFilterData", &PxShape::setSimulationFilterData)
+			.function("setQueryFilterData", &PxShape::setQueryFilterData);
 	class_<PxShapeFlags>("ShapeFlags")
 			.constructor<PxU32>();
 	enum_<PxShapeFlag::Enum>("ShapeFlag")
@@ -161,16 +165,20 @@ EMSCRIPTEN_BINDINGS(physxjs)
 			.function("createController", &PxControllerManager::createController);
 	class_<PxControllerDesc>("ControllerDesc")
 			.property("material", &PxControllerDesc::material)
-			.property("slopeLimit", &PxControllerDesc::slopeLimit);
+			.property("slopeLimit", &PxControllerDesc::slopeLimit)
+			.property("scaleCoeff", &PxControllerDesc::scaleCoeff)
+			.property("contactOffset", &PxControllerDesc::contactOffset);
 	class_<PxCapsuleControllerDesc, base<PxControllerDesc>>("CapsuleControllerDesc")
 			.constructor<>()
 			.property("radius", &PxCapsuleControllerDesc::radius)
 			.property("height", &PxCapsuleControllerDesc::height);
+	class_<PxBoxControllerDesc, base<PxControllerDesc>>("BoxControllerDesc")
+			.constructor<>()
+			.property("halfHeight", &PxBoxControllerDesc::halfHeight)
+			.property("halfSideExtent", &PxBoxControllerDesc::halfSideExtent)
+			.property("halfForwardExtent", &PxBoxControllerDesc::halfForwardExtent);
 	class_<PxController>("Controller")
-			.function("move", select_overload<PxControllerCollisionFlags(PxController&, const PxVec3&, PxF32, PxF32)>([](PxController& self, const PxVec3& disp, PxF32 minDist, PxF32 elapsedTime)
-			{
-				return self.move(disp, minDist, elapsedTime, PxControllerFilters());
-			}))
+			.function("move", &PxController::move)
 			.function("getPosition", select_overload<PxVec3(PxController&)>([](PxController& self)
 			{
 				return toVec3(self.getPosition());
@@ -179,9 +187,62 @@ EMSCRIPTEN_BINDINGS(physxjs)
 			{
 				return self.setPosition(PxExtendedVec3(float(position.x), float(position.y), float(position.z)));
 			}));
-	enum_<PxControllerCollisionFlag::Enum>("ControllerCollisionFlag");
+	class_<PxControllerFilters>("ControllerFilters")
+			.constructor<const PxFilterData*, PxQueryFilterCallback*, PxControllerFilterCallback*>();
+	class_<PxFilterData>("FilterData")
+			.constructor<PxU32, PxU32, PxU32, PxU32>()
+			.property("word0", &PxFilterData::word0)
+			.property("word1", &PxFilterData::word1)
+			.property("word2", &PxFilterData::word2)
+			.property("word3", &PxFilterData::word3);
+	class_<PxQueryFilterCallback>("QueryFilterCallback");
+	class_<PxControllerFilterCallback>("ControllerFilterCallback");
+	class_<PxObstacleContext>("ObstacleContext");
+	enum_<PxControllerCollisionFlag::Enum>("ControllerCollisionFlag")
+			.value("eCOLLISION_SIDES", PxControllerCollisionFlag::eCOLLISION_SIDES)
+			.value("eCOLLISION_UP", PxControllerCollisionFlag::eCOLLISION_UP)
+			.value("eCOLLISION_DOWN", PxControllerCollisionFlag::eCOLLISION_DOWN);
 	class_<PxControllerCollisionFlags>("ControllerCollisionFlags")
+			.function("eCOLLISION_SIDES", select_overload<bool(PxControllerCollisionFlags&)>([](PxControllerCollisionFlags& self)
+			{
+				return (self & PxControllerCollisionFlag::eCOLLISION_SIDES) == PxControllerCollisionFlag::eCOLLISION_SIDES;
+			}))
+			.function("eCOLLISION_UP", select_overload<bool(PxControllerCollisionFlags&)>([](PxControllerCollisionFlags& self)
+			{
+				return (self & PxControllerCollisionFlag::eCOLLISION_UP) == PxControllerCollisionFlag::eCOLLISION_UP;
+			}))
+			.function("eCOLLISION_DOWN", select_overload<bool(PxControllerCollisionFlags&)>([](PxControllerCollisionFlags& self)
+			{
+				return (self & PxControllerCollisionFlag::eCOLLISION_DOWN) == PxControllerCollisionFlag::eCOLLISION_DOWN;
+			}));
+	class_<PxRaycastCallback>("RaycastCallback")
+			.property("block", &PxRaycastCallback::block);
+	class_<PxLocationHit>("LocationHit")
+			.property("position", &PxLocationHit::position)
+			.property("normal", &PxLocationHit::normal)
+			.property("distance", &PxLocationHit::distance);
+	class_<PxRaycastHit, base<PxLocationHit>>("RaycastHit");
+	class_<PxRaycastBuffer, base<PxRaycastCallback>>("RaycastBuffer")
+			.constructor<>();
+	enum_<PxHitFlag::Enum>("HitFlag")
+			.value("ePOSITION", PxHitFlag::ePOSITION)
+			.value("eNORMAL", PxHitFlag::eNORMAL)
+			.value("eUV", PxHitFlag::eUV)
+			.value("eASSUME_NO_INITIAL_OVERLAP", PxHitFlag::eASSUME_NO_INITIAL_OVERLAP)
+			.value("eMESH_MULTIPLE", PxHitFlag::eMESH_MULTIPLE)
+			.value("eMESH_ANY", PxHitFlag::eMESH_ANY)
+			.value("eMESH_BOTH_SIDES", PxHitFlag::eMESH_BOTH_SIDES)
+			.value("ePRECISE_SWEEP", PxHitFlag::ePRECISE_SWEEP)
+			.value("eMTD", PxHitFlag::eMTD)
+			.value("eFACE_INDEX", PxHitFlag::eFACE_INDEX)
+			.value("eDEFAULT", PxHitFlag::eDEFAULT)
+			.value("eMODIFIABLE_FLAGS", PxHitFlag::eMODIFIABLE_FLAGS);
+	class_<PxHitFlags>("HitFlags")
 			.constructor<PxU32>();
+	class_<PxQueryFilterData>("QueryFilterData")
+			.constructor<>()
+			.property("data", &PxQueryFilterData::data);
+	class_<PxQueryCache>("QueryCache");
 }
 
 namespace emscripten
@@ -191,6 +252,7 @@ namespace emscripten
 		//some physx classes have a release() method instead of a destructor
 		template<> void raw_destructor<PxFoundation>(PxFoundation* ptr) { ptr->release(); }
 		template<> void raw_destructor<PxPvd>(PxPvd* ptr) { ptr-> release(); }
+		template<> void raw_destructor<PxPhysics>(PxPhysics* ptr) { ptr->release(); }
 		template<> void raw_destructor<PxScene>(PxScene* ptr) { ptr-> release(); }
 		template<> void raw_destructor<PxMaterial>(PxMaterial* ptr) { ptr-> release(); }
 		template<> void raw_destructor<PxActor>(PxActor* ptr) { ptr-> release(); }
@@ -205,7 +267,7 @@ namespace emscripten
 		template<> void raw_destructor<PxControllerManager>(PxControllerManager* ptr) { ptr-> release(); }
 		template<> void raw_destructor<PxController>(PxController* ptr) { ptr-> release(); }
 		
-		 //can't be manually destructed or constructed
+		//can't be manually destructed or constructed
 		template<> void raw_destructor<PxPhysicsInsertionCallback>(PxPhysicsInsertionCallback* ptr) {}
 		template<> void raw_destructor<PxControllerDesc>(PxControllerDesc* ptr) {}
 	}
