@@ -25,7 +25,31 @@ EMSCRIPTEN_BINDINGS(physxjs)
 	function("CreateCooking", &PxCreateCooking);
 	function("CreateControllerManager", &PxCreateControllerManager);
 	
-	//classes/enums
+	//enums
+	enum_<PxShapeFlag::Enum>("ShapeFlag")
+			.value("eSIMULATION_SHAPE", PxShapeFlag::eSIMULATION_SHAPE)
+			.value("eSCENE_QUERY_SHAPE", PxShapeFlag::eSCENE_QUERY_SHAPE)
+			.value("eTRIGGER_SHAPE", PxShapeFlag::eTRIGGER_SHAPE)
+			.value("eVISUALIZATION", PxShapeFlag::eVISUALIZATION);
+	enum_<PxControllerCollisionFlag::Enum>("ControllerCollisionFlag")
+			.value("eCOLLISION_SIDES", PxControllerCollisionFlag::eCOLLISION_SIDES)
+			.value("eCOLLISION_UP", PxControllerCollisionFlag::eCOLLISION_UP)
+			.value("eCOLLISION_DOWN", PxControllerCollisionFlag::eCOLLISION_DOWN);
+	enum_<PxHitFlag::Enum>("HitFlag")
+			.value("ePOSITION", PxHitFlag::ePOSITION)
+			.value("eNORMAL", PxHitFlag::eNORMAL)
+			.value("eUV", PxHitFlag::eUV)
+			.value("eASSUME_NO_INITIAL_OVERLAP", PxHitFlag::eASSUME_NO_INITIAL_OVERLAP)
+			.value("eMESH_MULTIPLE", PxHitFlag::eMESH_MULTIPLE)
+			.value("eMESH_ANY", PxHitFlag::eMESH_ANY)
+			.value("eMESH_BOTH_SIDES", PxHitFlag::eMESH_BOTH_SIDES)
+			.value("ePRECISE_SWEEP", PxHitFlag::ePRECISE_SWEEP)
+			.value("eMTD", PxHitFlag::eMTD)
+			.value("eFACE_INDEX", PxHitFlag::eFACE_INDEX)
+			.value("eDEFAULT", PxHitFlag::eDEFAULT)
+			.value("eMODIFIABLE_FLAGS", PxHitFlag::eMODIFIABLE_FLAGS);
+	
+	//classes
 	class_<PxFoundation>("Foundation");
 	class_<PxAllocatorCallback>("AllocatorCallback");
 	class_<PxErrorCallback>("ErrorCallback");
@@ -100,11 +124,6 @@ EMSCRIPTEN_BINDINGS(physxjs)
 			.function("setQueryFilterData", &PxShape::setQueryFilterData);
 	class_<PxShapeFlags>("ShapeFlags")
 			.constructor<PxU32>();
-	enum_<PxShapeFlag::Enum>("ShapeFlag")
-			.value("eSIMULATION_SHAPE", PxShapeFlag::eSIMULATION_SHAPE)
-			.value("eSCENE_QUERY_SHAPE", PxShapeFlag::eSCENE_QUERY_SHAPE)
-			.value("eTRIGGER_SHAPE", PxShapeFlag::eTRIGGER_SHAPE)
-			.value("eVISUALIZATION", PxShapeFlag::eVISUALIZATION);
 	class_<PxRigidBody, base<PxRigidActor>>("RigidBody")
 			.function("getLinearVelocity", &PxRigidBody::getLinearVelocity)
 			.function("setLinearVelocity", &PxRigidBody::setLinearVelocity);
@@ -198,10 +217,6 @@ EMSCRIPTEN_BINDINGS(physxjs)
 	class_<PxQueryFilterCallback>("QueryFilterCallback");
 	class_<PxControllerFilterCallback>("ControllerFilterCallback");
 	class_<PxObstacleContext>("ObstacleContext");
-	enum_<PxControllerCollisionFlag::Enum>("ControllerCollisionFlag")
-			.value("eCOLLISION_SIDES", PxControllerCollisionFlag::eCOLLISION_SIDES)
-			.value("eCOLLISION_UP", PxControllerCollisionFlag::eCOLLISION_UP)
-			.value("eCOLLISION_DOWN", PxControllerCollisionFlag::eCOLLISION_DOWN);
 	class_<PxControllerCollisionFlags>("ControllerCollisionFlags")
 			.function("eCOLLISION_SIDES", select_overload<bool(PxControllerCollisionFlags&)>([](PxControllerCollisionFlags& self)
 			{
@@ -224,19 +239,6 @@ EMSCRIPTEN_BINDINGS(physxjs)
 	class_<PxRaycastHit, base<PxLocationHit>>("RaycastHit");
 	class_<PxRaycastBuffer, base<PxRaycastCallback>>("RaycastBuffer")
 			.constructor<>();
-	enum_<PxHitFlag::Enum>("HitFlag")
-			.value("ePOSITION", PxHitFlag::ePOSITION)
-			.value("eNORMAL", PxHitFlag::eNORMAL)
-			.value("eUV", PxHitFlag::eUV)
-			.value("eASSUME_NO_INITIAL_OVERLAP", PxHitFlag::eASSUME_NO_INITIAL_OVERLAP)
-			.value("eMESH_MULTIPLE", PxHitFlag::eMESH_MULTIPLE)
-			.value("eMESH_ANY", PxHitFlag::eMESH_ANY)
-			.value("eMESH_BOTH_SIDES", PxHitFlag::eMESH_BOTH_SIDES)
-			.value("ePRECISE_SWEEP", PxHitFlag::ePRECISE_SWEEP)
-			.value("eMTD", PxHitFlag::eMTD)
-			.value("eFACE_INDEX", PxHitFlag::eFACE_INDEX)
-			.value("eDEFAULT", PxHitFlag::eDEFAULT)
-			.value("eMODIFIABLE_FLAGS", PxHitFlag::eMODIFIABLE_FLAGS);
 	class_<PxHitFlags>("HitFlags")
 			.constructor<PxU32>();
 	class_<PxQueryFilterData>("QueryFilterData")
