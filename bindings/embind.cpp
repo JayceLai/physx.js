@@ -186,7 +186,8 @@ EMSCRIPTEN_BINDINGS(physxjs)
 			.property("material", &PxControllerDesc::material)
 			.property("slopeLimit", &PxControllerDesc::slopeLimit)
 			.property("scaleCoeff", &PxControllerDesc::scaleCoeff)
-			.property("contactOffset", &PxControllerDesc::contactOffset);
+			.property("contactOffset", &PxControllerDesc::contactOffset)
+			.property("stepOffset", &PxControllerDesc::stepOffset);
 	class_<PxCapsuleControllerDesc, base<PxControllerDesc>>("CapsuleControllerDesc")
 			.constructor<>()
 			.property("radius", &PxCapsuleControllerDesc::radius)
