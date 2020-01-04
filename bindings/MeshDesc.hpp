@@ -36,4 +36,28 @@ namespace physx
 		triangles.data = &triangleVec[0];
 		triangles.count++;
 	}
+	
+	
+	
+	class JSConvexMeshDesc : public PxConvexMeshDesc
+	{
+		public:
+			JSConvexMeshDesc();
+			void point(PxReal x, PxReal y, PxReal z);
+		
+		private:
+			std::vector<PxVec3> pointVec;
+	};
+
+	JSConvexMeshDesc::JSConvexMeshDesc()
+	{
+		points.stride = sizeof(PxVec3);
+	}
+	
+	void JSConvexMeshDesc::point(PxReal x, PxReal y, PxReal z)
+	{
+		pointVec.push_back(PxVec3(x, y, z));
+		points.data = &pointVec[0];
+		points.count++;
+	}
 }

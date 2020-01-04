@@ -2,7 +2,7 @@
 #include "PxPhysicsAPI.h"
 
 #include "mom.hpp"
-#include "JSTriangleMeshDesc.hpp"
+#include "MeshDesc.hpp"
 
 using namespace emscripten;
 using namespace physx;
@@ -48,7 +48,21 @@ EMSCRIPTEN_BINDINGS(physxjs)
 			.value("eFACE_INDEX", PxHitFlag::eFACE_INDEX)
 			.value("eDEFAULT", PxHitFlag::eDEFAULT)
 			.value("eMODIFIABLE_FLAGS", PxHitFlag::eMODIFIABLE_FLAGS);
-	
+	enum_<PxConvexFlag::Enum>("ConvexFlag")
+			.value("e16_BIT_INDICES", PxConvexFlag::e16_BIT_INDICES)
+			.value("eCOMPUTE_CONVEX", PxConvexFlag::eCOMPUTE_CONVEX)
+			.value("eCHECK_ZERO_AREA_TRIANGLES", PxConvexFlag::eCHECK_ZERO_AREA_TRIANGLES)
+			.value("eQUANTIZE_INPUT", PxConvexFlag::eQUANTIZE_INPUT)
+			.value("eDISABLE_MESH_VALIDATION", PxConvexFlag::eDISABLE_MESH_VALIDATION)
+			.value("ePLANE_SHIFTING", PxConvexFlag::ePLANE_SHIFTING)
+			.value("eFAST_INERTIA_COMPUTATION", PxConvexFlag::eFAST_INERTIA_COMPUTATION)
+			.value("eGPU_COMPATIBLE", PxConvexFlag::eGPU_COMPATIBLE)
+			.value("eSHIFT_VERTICES", PxConvexFlag::eSHIFT_VERTICES);
+	enum_<PxMeshGeometryFlag::Enum>("MeshGeometryFlag")
+			.value("eDOUBLE_SIDED", PxMeshGeometryFlag::eDOUBLE_SIDED);
+	enum_<PxConvexMeshGeometryFlag::Enum>("ConvexMeshGeometryFlag")
+			.value("eTIGHT_BOUNDS", PxConvexMeshGeometryFlag::eTIGHT_BOUNDS);
+			
 	//classes
 	class_<PxFoundation>("Foundation");
 	class_<PxAllocatorCallback>("AllocatorCallback");
@@ -166,19 +180,34 @@ EMSCRIPTEN_BINDINGS(physxjs)
 			{
 				return self.createTriangleMesh(desc, insertionCallback);
 			}))
-			.function("validateTriangleMesh", &PxCooking::validateTriangleMesh);
+			.function("createConvexMesh", select_overload<PxConvexMesh*(PxCooking&, const PxConvexMeshDesc&, PxPhysicsInsertionCallback&)>([](PxCooking& self, const PxConvexMeshDesc& desc, PxPhysicsInsertionCallback& insertionCallback)
+			{
+				return self.createConvexMesh(desc, insertionCallback);
+			}))
+			.function("validateTriangleMesh", &PxCooking::validateTriangleMesh)
+			.function("validateConvexMesh", &PxCooking::validateTriangleMesh);
 	class_<PxTriangleMeshDesc>("TriangleMeshDescImpl");
+	class_<PxConvexMeshDesc>("ConvexMeshDescImpl")
+			.property("flags", &PxConvexMeshDesc::flags);
 	class_<JSTriangleMeshDesc, base<PxTriangleMeshDesc>>("TriangleMeshDesc")
 			.constructor<>()
 			.function("point", &JSTriangleMeshDesc::point)
 			.function("triangle", &JSTriangleMeshDesc::triangle);
+	class_<JSConvexMeshDesc, base<PxConvexMeshDesc>>("ConvexMeshDesc")
+			.constructor<>()
+			.function("point", &JSConvexMeshDesc::point);
 	class_<PxTriangleMesh>("TriangleMesh");
+	class_<PxConvexMesh>("ConvexMesh");
 	class_<PxPhysicsInsertionCallback>("PhysicsInsertionCallback");
 	class_<PxTriangleMeshGeometry, base<PxGeometry>>("TriangleMeshGeometry")
 			.constructor<PxTriangleMesh*, const PxMeshScale&, PxMeshGeometryFlags>();
+	class_<PxConvexMeshGeometry, base<PxGeometry>>("ConvexMeshGeometry")
+			.constructor<PxConvexMesh*, const PxMeshScale&, PxConvexMeshGeometryFlags>();
 	class_<PxMeshScale>("MeshScale")
 			.constructor<>();
 	class_<PxMeshGeometryFlags>("MeshGeometryFlags")
+			.constructor<>();
+	class_<PxConvexMeshGeometryFlags>("ConvexMeshGeometryFlags")
 			.constructor<>();
 	class_<PxControllerManager>("ControllerManager")
 			.function("createController", &PxControllerManager::createController);
@@ -246,6 +275,8 @@ EMSCRIPTEN_BINDINGS(physxjs)
 			.constructor<>()
 			.property("data", &PxQueryFilterData::data);
 	class_<PxQueryCache>("QueryCache");
+	class_<PxConvexFlags>("ConvexFlags")
+			.constructor<PxU32>();
 }
 
 namespace emscripten
@@ -267,6 +298,7 @@ namespace emscripten
 		template<> void raw_destructor<PxRigidDynamic>(PxRigidDynamic* ptr) { ptr-> release(); }
 		template<> void raw_destructor<PxCooking>(PxCooking* ptr) { ptr-> release(); }
 		template<> void raw_destructor<PxTriangleMesh>(PxTriangleMesh* ptr) { ptr-> release(); }
+		template<> void raw_destructor<PxConvexMesh>(PxConvexMesh* ptr) { ptr-> release(); }
 		template<> void raw_destructor<PxControllerManager>(PxControllerManager* ptr) { ptr-> release(); }
 		template<> void raw_destructor<PxController>(PxController* ptr) { ptr-> release(); }
 		
