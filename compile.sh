@@ -28,7 +28,14 @@ else
 	cmd="$cmd -s WASM=0 -o physx.asm.js"
 fi
 
+echo '====================PATH===================='
+echo '$WORKING_DIR='$WORKING_DIR
+echo '$PHYSX_ROOT_DIR='$PHYSX_ROOT_DIR
+echo '$PM_PxShared_PATH='$PM_PxShared_PATH
+echo ''
+echo '===================COMMAND=================='
 echo $cmd
+echo ''
 emcc $cmd
 
 # emcc -I$PHYSX_ROOT_DIR/include -I$PM_PxShared_PATH/include -I$WORKING_DIR/bindings -DNDEBUG -O3 -std=c++17 \
