@@ -1,0 +1,268 @@
+<html>
+	<head>
+		<title>physx.js demo</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+		<script src="math.js"></script>
+		<script src="gl.js"></script>
+		<script src="../build/physx.wasm2.js"></script>
+	</head>
+	<body onload="initPhysX().then(main);" style="background-color: #000; margin: 0; overflow: hidden;">
+		<span style="position: absolute; color: white; font-size: 3em;">Tap or click to fire the projectile</span>
+		<script>
+//this is a recreation of physx's SnippetHelloWorld in javascript using simplegl for rendering
+const CAM_NEAR = 0.1;
+const CAM_FAR = 100;
+const CAM_FOVY = 67 * DEGRAD;
+
+const tmpMat = new Matrix4();
+const tmpQuat = new Quaternion();
+const tmpVec1 = new Vector3();
+const tmpVec2 = new Vector3();
+
+var gl, canvas;
+var shaderDefault;
+var camera;
+
+var startDemo = false;
+var stackGL, stackPX;
+
+//these should be delete()'d/dispose()'d in reverse order if you're done with them but want to leave the webpage open
+var alloc, error, foundation, physics, dispatcher, scene, mesh;
+
+console.time("PhysX loaded");
+
+function main(Px)
+{
+	window.Px = Px;
+	console.timeEnd("PhysX loaded");
+	
+	//---simplegl init---//
+	canvas = document.createElement("canvas");
+	
+	gl = canvas.getContext("webgl2");
+	gl.enable(gl.DEPTH_TEST);
+	gl.enable(gl.CULL_FACE);
+	gl.enable(gl.BLEND);
+	gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+	
+	camera = new Camera();
+	
+	shaderDefault = new DefaultShader(gl);
+	
+	var bod = document.body;
+	bod.onresize = function()
+	{
+		var w = innerWidth;
+		var h = innerHeight;
+		
+		canvas.width = w;
+		canvas.height = h;
+		
+		gl.viewport(0, 0, w, h);
+		camera.projection.setPerspective(CAM_NEAR, CAM_FAR, CAM_FOVY, w / h);
+	};
+	
+	bod.appendChild(canvas);
+	bod.onresize();
+	
+	var dlight = new DirectionalLight();
+	dlight.direction.set(-1, -0.8, -0.2);
+	shaderDefault.use();
+	shaderDefault.setUniformDirectionalLightEnable(true);
+	shaderDefault.setUniformDirectionalLight(dlight);
+	
+	//---physx init---//
+	alloc = new Px.DefaultAllocator();
+	error = new Px.DefaultErrorCallback();
+	foundation = Px.CreateFoundation(Px.PHYSICS_VERSION, alloc, error);
+	
+	var tolerances = new Px.TolerancesScale();
+	physics = Px.CreatePhysics(Px.PHYSICS_VERSION, foundation, tolerances, true, null);
+	
+	var desc = new Px.SceneDesc(tolerances);
+	tolerances.delete();
+	var gravity = new Px.Vec3(0, -9.81, 0);
+	desc.gravity = gravity;
+	gravity.delete();
+	dispatcher = Px.DefaultCpuDispatcherCreate(); //numThreads arg is disabled so physx always runs in the main thread
+	desc.cpuDispatcher = dispatcher;
+	desc.filterShader_setDefault(); //equivalent of "desc.filterShader = PxDefaultSimulationFilterShader;"
+	scene = physics.createScene(desc);
+	desc.delete();
+	
+	//---demo init---//
+	canvas.addEventListener("pointerdown", () => startDemo = true);
+	
+	var plane = new Px.Plane(0, 1, 0, 0);
+	var matPX = physics.createMaterial(0.5, 0.5, 0.5);
+	var groundPlane = Px.CreatePlane(physics, plane, matPX);
+	plane.delete();
+	scene.addActor(groundPlane, null);
+	
+	var he = 0.5;
+	var box = new Px.BoxGeometry(he, he, he);
+	var shape = createShape(box, matPX);
+	box.delete();
+	
+	var vbuf = [];
+	var ibuf = new Uint32Array(36);
+	
+	vbuf[ 0] = new Vertex(tmpVec1.set(-he, -he,  he), VZ,  0, 1); //BL  front
+	vbuf[ 1] = new Vertex(tmpVec1.set( he, -he,  he), VZ,  1, 1); //BR
+	vbuf[ 2] = new Vertex(tmpVec1.set(-he,  he,  he), VZ,  0, 0); //TL
+	vbuf[ 3] = new Vertex(tmpVec1.set( he,  he,  he), VZ,  1, 0); //TR
+	
+	vbuf[ 4] = new Vertex(tmpVec1.set(-he, -he, -he), VNZ, 1, 1); //BR  back
+	vbuf[ 5] = new Vertex(tmpVec1.set( he, -he, -he), VNZ, 0, 1); //BL
+	vbuf[ 6] = new Vertex(tmpVec1.set(-he,  he, -he), VNZ, 1, 0); //TR
+	vbuf[ 7] = new Vertex(tmpVec1.set( he,  he, -he), VNZ, 0, 0); //TL
+	
+	vbuf[ 8] = new Vertex(tmpVec1.set(-he, -he, -he), VNX, 0, 1); //BL  left
+	vbuf[ 9] = new Vertex(tmpVec1.set(-he, -he,  he), VNX, 1, 1); //BR
+	vbuf[10] = new Vertex(tmpVec1.set(-he,  he, -he), VNX, 0, 0); //TL
+	vbuf[11] = new Vertex(tmpVec1.set(-he,  he,  he), VNX, 1, 0); //TR
+	
+	vbuf[12] = new Vertex(tmpVec1.set( he, -he, -he), VX,  1, 1); //BR  right
+	vbuf[13] = new Vertex(tmpVec1.set( he, -he,  he), VX,  0, 1); //BL
+	vbuf[14] = new Vertex(tmpVec1.set( he,  he, -he), VX,  1, 0); //TR
+	vbuf[15] = new Vertex(tmpVec1.set( he,  he,  he), VX,  0, 0); //TL
+	
+	vbuf[16] = new Vertex(tmpVec1.set(-he,  he,  he), VY,  0, 1); //BL  top
+	vbuf[17] = new Vertex(tmpVec1.set( he,  he,  he), VY,  1, 1); //BR
+	vbuf[18] = new Vertex(tmpVec1.set(-he,  he, -he), VY,  0, 0); //TL
+	vbuf[19] = new Vertex(tmpVec1.set( he,  he, -he), VY,  1, 0); //TR
+	
+	vbuf[20] = new Vertex(tmpVec1.set(-he, -he,  he), VNY, 0, 0); //TL  bottom
+	vbuf[21] = new Vertex(tmpVec1.set( he, -he,  he), VNY, 1, 0); //TR
+	vbuf[22] = new Vertex(tmpVec1.set(-he, -he, -he), VNY, 0, 1); //BL
+	vbuf[23] = new Vertex(tmpVec1.set( he, -he, -he), VNY, 1, 1); //BR
+	
+	ibuf[ 0] = 0;  ibuf[ 1] = 1;  ibuf[ 2] = 2;  //front
+	ibuf[ 3] = 3;  ibuf[ 4] = 2;  ibuf[ 5] = 1;
+	ibuf[ 6] = 6;  ibuf[ 7] = 5;  ibuf[ 8] = 4;  //back
+	ibuf[ 9] = 5;  ibuf[10] = 6;  ibuf[11] = 7;
+	ibuf[12] = 8;  ibuf[13] = 9;  ibuf[14] = 10; //left
+	ibuf[15] = 11; ibuf[16] = 10; ibuf[17] = 9;
+	ibuf[18] = 14; ibuf[19] = 13; ibuf[20] = 12; //right
+	ibuf[21] = 13; ibuf[22] = 14; ibuf[23] = 15;
+	ibuf[24] = 16; ibuf[25] = 17; ibuf[26] = 18; //top
+	ibuf[27] = 19; ibuf[28] = 18; ibuf[29] = 17;
+	ibuf[30] = 22; ibuf[31] = 21; ibuf[32] = 20; //bottom
+	ibuf[33] = 21; ibuf[34] = 22; ibuf[35] = 23;
+	
+	var matStack = new Material();
+	matStack.ambientColor = COLOR_MAGENTA;
+	matStack.diffuseTexture = COLOR_MAGENTA;
+	mesh = new Mesh(gl, vbuf, ibuf);
+	
+	stackGL = [];
+	stackPX = [];
+	var stackZ = 0;
+	
+	for(var i = 0; i < 5; i++)
+	{
+		tmpVec1.set(0, 0, stackZ);
+		stackZ -= 10;
+		createStack(tmpVec1, 10 + i * 3, shape, he, matStack);
+	}
+	
+	var matProjectile = new Material();
+	matProjectile.ambientColor = COLOR_GREEN;
+	matProjectile.diffuseTexture = COLOR_GREEN;
+	
+	tmpMat.setTranslation(tmpVec1.set(0, 5, 5));
+	var projectile = createDynamic(tmpMat, shape, 100, matProjectile);
+	shape.delete();
+	var linVel = new Px.Vec3(0, 0, -50);
+	projectile.setLinearVelocity(linVel, true);
+	linVel.delete();
+	
+	stackGL.push(new Model(new MatMesh(matProjectile, mesh)));
+	stackPX.push(projectile);
+	
+	camera.position.set(7, 10, 10);
+	camera.lookAt(tmpVec1.set(0, 7, 0));
+	
+	updateDeltaTime();
+	draw(true);
+}
+
+function draw()
+{
+	gl.clearColor(0, 0, 0, 1);
+	gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+	
+	shaderDefault.use();
+	shaderDefault.setUniformCamera(camera);
+	
+	if(startDemo)
+	{
+		//normally you would pass in deltaTime instead of 1 / 60 but the overly delicate cube stacks explode because of the initial loading lag spike
+		//deltaTime is defined in gl.js
+		//physx's actual hello world snippet uses a fixed timestep so no hate
+		scene.simulate(1 / 60);
+		scene.fetchResults(true);
+	}
+	
+	for(var i in stackGL)
+	{
+		var model = stackGL[i];
+		var body = stackPX[i];
+		updateModelTransform(model, body);
+		shaderDefault.render(model);
+	}
+	
+	requestAnimationFrame(draw);
+	updateDeltaTime();
+}
+
+function createStack(pos, size, shape, halfExtent, matGL)
+{
+	for(var i = 0; i < size; i++)
+	{
+		for(var j = 0; j < size - i; j++)
+		{
+			tmpVec2.set(pos);
+			tmpVec2.x += (j * 2 - size + i) * halfExtent;
+			tmpVec2.y += (i * 2 + 1) * halfExtent;
+			tmpMat.setTranslation(tmpVec2);
+			
+			stackGL.push(new Model(new MatMesh(matGL, mesh)));
+			stackPX.push(createDynamic(tmpMat, shape, 1, tmpMat));
+		}
+	}
+}
+
+function createShape(geometry, matPX)
+{
+	var flags = new Px.ShapeFlags(Px.ShapeFlag.eVISUALIZATION.value | Px.ShapeFlag.eSCENE_QUERY_SHAPE.value | Px.ShapeFlag.eSIMULATION_SHAPE.value);
+	var shape = physics.createShape(geometry, matPX, false, flags);
+	flags.delete();
+	
+	return shape;
+}
+
+function createDynamic(transform, shape, density)
+{
+	var localTm = new Px.Transform(transform.val);
+	var dynamic = physics.createRigidDynamic(localTm);
+	localTm.delete();
+	dynamic.attachShape(shape);
+	Px.RigidBodyExt.updateMassAndInertia(dynamic, density, null, false);
+	scene.addActor(dynamic, null);
+	
+	return dynamic;
+}
+
+function updateModelTransform(model, body)
+{
+	var pxtra = body.getGlobalPose();
+	var pxquat = pxtra.q;
+	var pxvec = pxtra.p;
+	
+	model.transform.idt().setTranslation(tmpVec1.set(pxvec.x, pxvec.y, pxvec.z))
+			.mul(tmpQuat.set(pxquat.x, pxquat.y, pxquat.z, pxquat.w));
+}
+		</script>
+	</body>
+</html>
