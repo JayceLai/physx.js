@@ -23,9 +23,9 @@ cmd="-I$PHYSX_ROOT_DIR/include -I$PM_PxShared_PATH/include -I$WORKING_DIR/bindin
 
 wasm=$1
 if [ $wasm ]; then
-	cmd="$cmd -s WASM=1 -o physx.wasm.js"
+	cmd+=''' -s WASM=1  -s BINARYEN_IGNORE_IMPLICIT_TRAPS=1 -o physx.wasm2.js'''
 else
-	cmd="$cmd -s WASM=0 -o physx.asm.js"
+	cmd+=" -s WASM=0 -s AGGRESSIVE_VARIABLE_ELIMINATION=1 -s ELIMINATE_DUPLICATE_FUNCTIONS=1 -s SINGLE_FILE=1 -s LEGACY_VM_SUPPORT=1 -o physx.asm2.js"
 fi
 
 echo '====================PATH===================='
